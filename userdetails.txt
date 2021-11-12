@@ -1,0 +1,309 @@
+pom xml
+
+<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+		<java.version>1.8</java.version>
+	</properties>
+
+in side dependency
+
+<dependency>
+			<groupId>javax.servlet</groupId>
+			<artifactId>jstl</artifactId>
+		</dependency>
+		<!-- https://mvnrepository.com/artifact/javax.servlet/servlet-api -->
+		<dependency>
+			<groupId>javax.servlet</groupId>
+			<artifactId>servlet-api</artifactId>
+			<version>2.5</version>
+			<scope>provided</scope>
+		</dependency>
+
+Controller class
+
+	@GetMapping("/show-users")
+	public String showAllUsers(HttpServletRequest request) {
+		request.setAttribute("users", userService.showAllUsers());
+		request.setAttribute("mode", "ALL_USERS");
+		return "welcomepage";
+	}
+
+	@RequestMapping("/delete-user")
+	public String deleteUser(@RequestParam int id, HttpServletRequest request) {
+		userService.deleteMyUser(id);
+		request.setAttribute("users", userService.showAllUsers());
+		request.setAttribute("mode", "ALL_USERS");
+		return "welcomepage";
+	}
+	
+	@RequestMapping("/edit-user")
+	public String editUser(@RequestParam int id,HttpServletRequest request) {
+		request.setAttribute("user", userService.editUser(id));
+		request.setAttribute("mode", "MODE_UPDATE");
+		return "welcomepage";
+	}
+	
+	@RequestMapping("/login")
+	public String login(HttpServletRequest request) {
+		request.setAttribute("mode", "MODE_LOGIN");
+		return "welcomepage";
+	}
+	
+	@RequestMapping ("/login-user")
+	public String loginUser(@ModelAttribute User user, HttpServletRequest request) {
+		if(userService.findByUsernameAndPassword(user.getUsername(), user.getPassword())!=null) {
+			return "homepage";
+		}
+		else {
+			request.setAttribute("error", "Invalid Username or Password");
+			request.setAttribute("mode", "MODE_LOGIN");
+			return "welcomepage";
+			
+		}
+	}
+
+create service package
+inside that create class userservice
+
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.transaction.Transactional;
+
+import org.springframework.stereotype.Service;
+
+import com.vikash.modal.User;
+import com.vikash.repository.UserRepository;
+
+@Service
+@Transactional
+public class UserService {
+	
+	private final UserRepository userRepository;
+	
+	public UserService(UserRepository userRepository) {
+		this.userRepository=userRepository;
+	}
+	
+	public void saveMyUser(User user ) {
+		userRepository.save(user);
+	}
+	
+	public List<User> showAllUsers(){
+		List<User> users = new ArrayList<User>();
+		for(User user : userRepository.findAll()) {
+			users.add(user);
+		}
+		
+		return users;
+	}
+	
+	public void deleteMyUser(int id) {
+		userRepository.delete(id);
+	}
+	
+	public User editUser(int id) {
+		return userRepository.findOne(id);
+	}
+	
+	public User findByUsernameAndPassword(String username, String password) {
+		return userRepository.findByUsernameAndPassword(username, password);
+	}
+	}
+
+create userrepository
+package com.vikash.repository;
+
+import org.springframework.data.repository.CrudRepository;
+
+import com.vikash.modal.User;
+
+public interface UserRepository extends CrudRepository<User, Integer> {	
+	
+	public User findByUsernameAndPassword(String username, String password);
+}
+
+
+we have make changes in our admin page 
+
+<c:choose>
+		<c:when test="${mode=='MODE_HOME' }">
+			<div class="container" id="homediv">
+				<div class="jumbotron text-center">
+					<h1>Welcome to Tecno-tab</h1>
+					<h3>Subscribe my channel to support me</h3>
+				</div>
+			</div>
+
+		</c:when>
+
+		<c:when test="${mode=='MODE_REGISTER' }">
+			<div class="container text-center">
+				<h3>New Registration</h3>
+				<hr>
+				<form class="form-horizontal" method="POST" action="save-user">
+					<input type="hidden" name="id" value="${user.id }" />
+					<div class="form-group">
+						<label class="control-label col-md-3">Username</label>
+						<div class="col-md-7">
+							<input type="text" class="form-control" name="username"
+								value="${user.username }" />
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="control-label col-md-3">First Name</label>
+						<div class="col-md-7">
+							<input type="text" class="form-control" name="firstname"
+								value="${user.firstname }" />
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="control-label col-md-3">Last Name</label>
+						<div class="col-md-7">
+							<input type="text" class="form-control" name="lastname"
+								value="${user.lastname }" />
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="control-label col-md-3">Age </label>
+						<div class="col-md-3">
+							<input type="text" class="form-control" name="age"
+								value="${user.age }" />
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="control-label col-md-3">Password</label>
+						<div class="col-md-7">
+							<input type="password" class="form-control" name="password"
+								value="${user.password }" />
+						</div>
+					</div>
+					<div class="form-group ">
+						<input type="submit" class="btn btn-primary" value="Register" />
+					</div>
+				</form>
+			</div>
+		</c:when>
+		<c:when test="${mode=='ALL_USERS' }">
+			<div class="container text-center" id="tasksDiv">
+				<h3>All Users</h3>
+				<hr>
+				<div class="table-responsive">
+					<table class="table table-striped table-bordered">
+						<thead>
+							<tr>
+								<th>Id</th>
+								<th>UserName</th>
+								<th>First Name</th>
+								<th>LastName</th>
+								<th>Age</th>
+								<th>Delete</th>
+								<th>Edit</th>
+							</tr>
+						</thead>
+						<tbody>
+							<c:forEach var="user" items="${users }">
+								<tr>
+									<td>${user.id}</td>
+									<td>${user.username}</td>
+									<td>${user.firstname}</td>
+									<td>${user.lastname}</td>
+									<td>${user.age}</td>
+									<td><a href="/delete-user?id=${user.id }"><span
+											class="glyphicon glyphicon-trash"></span></a></td>
+									<td><a href="/edit-user?id=${user.id }"><span
+											class="glyphicon glyphicon-pencil"></span></a></td>
+								</tr>
+							</c:forEach>
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</c:when>
+
+		<c:when test="${mode=='MODE_UPDATE' }">
+			<div class="container text-center">
+				<h3>Update User</h3>
+				<hr>
+				<form class="form-horizontal" method="POST" action="save-user">
+					<input type="hidden" name="id" value="${user.id }" />
+					<div class="form-group">
+						<label class="control-label col-md-3">Username</label>
+						<div class="col-md-7">
+							<input type="text" class="form-control" name="username"
+								value="${user.username }" />
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="control-label col-md-3">First Name</label>
+						<div class="col-md-7">
+							<input type="text" class="form-control" name="firstname"
+								value="${user.firstname }" />
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="control-label col-md-3">Last Name</label>
+						<div class="col-md-7">
+							<input type="text" class="form-control" name="lastname"
+								value="${user.lastname }" />
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="control-label col-md-3">Age </label>
+						<div class="col-md-3">
+							<input type="text" class="form-control" name="age"
+								value="${user.age }" />
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="control-label col-md-3">Password</label>
+						<div class="col-md-7">
+							<input type="password" class="form-control" name="password"
+								value="${user.password }" />
+						</div>
+					</div>
+					<div class="form-group ">
+						<input type="submit" class="btn btn-primary" value="Update" />
+					</div>
+				</form>
+			</div>
+		</c:when>
+
+		<c:when test="${mode=='MODE_LOGIN' }">
+			<div class="container text-center">
+				<h3>User Login</h3>
+				<hr>
+				<form class="form-horizontal" method="POST" action="/login-user">
+					<c:if test="${not empty error }">
+						<div class= "alert alert-danger">
+							<c:out value="${error }"></c:out>
+							</div>
+					</c:if>
+					<div class="form-group">
+						<label class="control-label col-md-3">Username</label>
+						<div class="col-md-7">
+							<input type="text" class="form-control" name="username"
+								value="${user.username }" />
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="control-label col-md-3">Password</label>
+						<div class="col-md-7">
+							<input type="password" class="form-control" name="password"
+								value="${user.password }" />
+						</div>
+					</div>
+					<div class="form-group ">
+						<input type="submit" class="btn btn-primary" value="Login" />
+					</div>
+					</form>
+					</div>
+					</c:when>
+	</c:choose>
+
+
+	<!-- Optional JavaScript -->
+	<!-- jQuery first, then Popper.js, then Bootstrap JS -->
+	<script src="static/js/jquery-1.11.1.min.js"></script>
+	<script src="static/js/bootstrap.min.js"></script>
